@@ -136,4 +136,59 @@ async def win(ctx, loser: discord.Member):
     await ctx.send(embed = sendStats(ctx.author.id,ctx.author.display_name))
     await ctx.send(embed = sendStats(loser.id,loser.display_name))
 
+@client.command()
+async def tie(ctx, playerB: discord.Member):
+    
+    print(f'{ctx.author} tied with {playerB}')
+    check(ctx.author.id)
+    check(playerB.id)
+    playerAid = str(ctx.author.id)
+    playerBid = str(playerB.id)
+    Rw = 0.0
+    Rl = 0.0
+    feed = open('players.json')
+    players = json.load(feed)
+    feed.close()
+
+    #get the actual Ranks
+    for i in players:
+        if playerAid == i['id']:
+            Rw = float(i['Rank'])
+        if playerBid == i['id']:
+            Rl = float(i['Rank'])
+            
+    #new Ranks calculation
+    Rwaux = elo(Rw,Rl,0.5)
+    Rlaux = elo(Rl,Rw,0.5)
+    Rw = Rwaux
+    Rl = Rlaux
+    
+    #change Ranks
+    for i in players:
+
+        if playerAid == i['id']:
+            i['Rank'] = str(Rw)
+            aux = int(i['Ties'])
+            i['Ties'] = str(aux+1)
+            aux = int(i['Total Matches'])
+            i['Total Matches'] = str(aux+1)           
+            
+            
+        if playerBid == i['id']:
+            i['Rank'] = str(Rl)
+            aux = int(i['Ties'])
+            i['Ties'] = str(aux+1)
+            aux = int(i['Total Matches'])
+            i['Total Matches'] = str(aux+1)
+    
+    #save new data
+    with open('players.json','w') as w:
+        json.dump(players,w)
+        w.close()
+    
+    #send new stats
+    await ctx.send(embed = sendStats(ctx.author.id,ctx.author.display_name))
+    await ctx.send(embed = sendStats(playerB.id,playerB.display_name))
+
+
 client.run('')
