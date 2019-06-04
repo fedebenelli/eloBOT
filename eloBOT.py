@@ -51,7 +51,10 @@ def elo(Ra, Rb, S):
     nR = Ra + k * (S - 1/(1+math.pow(10.0,-(Ra-Rb)/n)))
     return nR
 
-def sendStats(memberID,memberNick):
+def sendStats(member):
+    
+    memberID = member.id
+    memberNick = member.display_name
     with open('players.json') as f:
         players = json.load(f)
     
@@ -64,14 +67,15 @@ def sendStats(memberID,memberNick):
                 t = i['Ties']
                 m = i['Total Matches']
                 i = i['id']
-
-                #return f'Player: <@{i}>\nRank: {round(float(r),3)}\nWins: {w}\nLoses: {l}\nTies: {t}\nMatches: {m}'
-    embed = discord.Embed(
-        title = f'{memberNick}\'s Stats:',
-        description = f'\nRank: {round(float(r),3)}\nWins: {w}\nLoses: {l}\nTies: {t}\nMatches: {m}',
-        colour = discord.Colour.green()
-    )
     
+    name = f'{memberNick}\'s Stats:'
+    avatar=str(member.avatar_url)
+    data = f'```\nRank:{round(float(r),3):->10}\nWins:{w:->10}\nLoses:{l:->9}\nTies:{t:->10}\nMatches:{m:->7}```'
+
+    embed = discord.Embed(colour = discord.Colour.green())    
+    embed.set_thumbnail(url = avatar)
+    embed.add_field(name = name,value = data ,inline=True)
+   
     return embed
 
 @client.command()
@@ -82,7 +86,7 @@ async def ping(ctx):
 async def stats(ctx, member: discord.Member):
     
     check(member.id)
-    await ctx.send(embed = sendStats(member.id,member.display_name))
+    await ctx.send(embed = sendStats(member))
   
 @client.command()
 async def win(ctx, loser: discord.Member):
@@ -133,8 +137,8 @@ async def win(ctx, loser: discord.Member):
         json.dump(players,w)
         w.close()
     #send new stats
-    await ctx.send(embed = sendStats(ctx.author.id,ctx.author.display_name))
-    await ctx.send(embed = sendStats(loser.id,loser.display_name))
+    await ctx.send(embed = sendStats(ctx.author))
+    await ctx.send(embed = sendStats(loser))
 
 @client.command()
 async def tie(ctx, playerB: discord.Member):
@@ -187,8 +191,8 @@ async def tie(ctx, playerB: discord.Member):
         w.close()
     
     #send new stats
-    await ctx.send(embed = sendStats(ctx.author.id,ctx.author.display_name))
-    await ctx.send(embed = sendStats(playerB.id,playerB.display_name))
+    await ctx.send(embed = sendStats(ctx.author))
+    await ctx.send(embed = sendStats(playerB))
 
 
 client.run('')
