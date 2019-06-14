@@ -285,6 +285,7 @@ async def veto(ctx):
     date = now.strftime("%d/%m/%Y %H:%M:%S")
     msj = f'Veto from:\n {name}, id:{authorid} at {date}'
     await man.send(msj)
+    await ctx.send('Your veto request hast been sent.')
 
 
 
