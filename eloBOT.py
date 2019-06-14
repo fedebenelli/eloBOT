@@ -8,7 +8,7 @@ from datetime import datetime
 
 client = commands.Bot(command_prefix=(',')) #Sets prefix
 
-
+RutherID = 168437285908512768
 
 #Events:
 
@@ -134,6 +134,22 @@ def sendStats(member):
 #Commands:
 
 @client.command()
+async def h(ctx):
+    embed = discord.Embed(colour=discord.Colour.green())
+   
+    string = '`,ping`: Returns bot\'s ping.\n`,stats @player`: Gives tagged player elo stats.\n`,win @player`: Assigns new elo ranks based on that message\'s author is the match winner and tagged user the match loser.\n`,tie @player`: Assigns new elo ranks based to both players.\n`,veto`: Sends a veto request to the bot\'s managers.'
+    name = 'eloBOT commands\'s:' 
+    embed.add_field(name=name, value=string, inline=True)
+
+    string = 'In the case the you want to veto a result where you\'ve been tagged use `,veto` and we\'ll contact with you.\nIf a user wants to veto a match, a screenshot of the match results from both players will be needed. If no evidence is provided from both parts, then the match never happened,  so make sure to always screenshot your ranked match results.'
+    name = 'Veto rules:'
+    embed.add_field(name=name, value=string, inline=True)
+
+
+    await ctx.send(embed=embed)
+
+
+@client.command()
 async def ping(ctx):  # Sends Current bot's ping
     await ctx.send(f'Pong! {round(client.latency*1000)}ms')
 
@@ -147,6 +163,10 @@ async def stats(ctx, member: discord.Member):  # Checks tagged user's stats
 
 @client.command()
 async def win(ctx, loser: discord.Member):  # Takes current message author's and tagged user's stats, checks them and calculates new ones and dumps in file
+    
+    if loser == ctx.author:
+        await ctx.send('Congratulations, you played yourself')
+        return
     print(f'{ctx.author} won against {loser}')
     check(ctx.author)
     check(loser)
@@ -200,7 +220,9 @@ async def win(ctx, loser: discord.Member):  # Takes current message author's and
 
 @client.command()
 async def tie(ctx, playerB: discord.Member):    # Takes current message author's and tagged user's stats,hecks them and calculates new ones and dumps in file
-
+    if playerB == ctx.author:
+        await ctx.send('Congratulations, you played yourself')
+        return
     print(f'{ctx.author} tied with {playerB}')
     check(ctx.author)
     check(playerB)
@@ -251,6 +273,18 @@ async def tie(ctx, playerB: discord.Member):    # Takes current message author's
     await ctx.send(embed=sendStats(ctx.author))
     await ctx.send(embed=sendStats(playerB))
     regStats('tied', ctx.author, playerB)
+
+
+@client.command()
+async def veto(ctx):
+
+    man = client.get_user(RutherID)
+    name = ctx.author.name
+    authorid = ctx.author.id
+    now = datetime.now()                      
+    date = now.strftime("%d/%m/%Y %H:%M:%S")
+    msj = f'Veto from:\n {name}, id:{authorid} at {date}'
+    await man.send(msj)
 
 
 
