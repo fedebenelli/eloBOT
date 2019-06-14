@@ -3,6 +3,7 @@ from discord.ext import commands
 import random
 import json
 import math
+from datetime import datetime
 #ELO Algorithm taken from https://blog.mackie.io/the-elo-algorithm
 
 client = commands.Bot(command_prefix=(',')) #Sets prefix
@@ -18,9 +19,30 @@ async def on_ready():  # Prints when the bot is ready
 
 
 #Functions:
+@client.event
+async def role(member):
 
-def check(playerid):  # Gets a discord id and checks if that id is already on the database, if not it will add it
+    # Opens file, saves the data as a variable and closes it
+    feed = open('players.json', "r")
+    players = json.load(feed)
+    feed.close()
 
+    for i in players:
+        if str(member.id) == i['id']:
+            #if float(i['Rank']) < 500:
+            role = discord.utils.get(member.guild.roles, name='1')
+            print()
+            await member.add_roles(role)
+            #role1 = discord.utils.get(member.guild.roles, name='1')
+            role2 = discord.utils.get(member.guild.roles, name='2')
+            role3 = discord.utils.get(member.guild.roles, name='3')
+
+            await member.remove_roles(role2,role3)
+            print()
+
+
+def check(member):  # Gets a discord id and checks if that id is already on the database, if not it will add it
+    playerid = member.id
     initialstats = json.loads('''{
     "id": "",
     "Rank": "500",
@@ -33,6 +55,7 @@ def check(playerid):  # Gets a discord id and checks if that id is already on th
     playerid = str(playerid)
     print(f'checked id: {playerid}')
 
+
     # Opens file, saves the data as a variable and closes it
     feed = open('players.json', "r")
     players = json.load(feed)
@@ -42,12 +65,34 @@ def check(playerid):  # Gets a discord id and checks if that id is already on th
         if playerid == i['id']:
             return True
 
-    with open('players.json', 'w') as w:    #
+    with open('players.json', 'w') as w:    #If players is not in the database it adds him
         initialstats["id"] = playerid
         players.append(initialstats)
         json.dump(players, w)
         w.close()
+ 
 
+def regStats(a,playerA, playerB):
+
+    f = open('players.json','r')
+    feed = json.load(f)
+    f.close()
+
+    f = open('registry.json', 'r')    
+    reg = json.load(f)
+    f.close()
+
+    now = datetime.now()                      
+    date = now.strftime("%d/%m/%Y %H:%M:%S")
+                
+    reg.append(date)
+    reg.append(f"{playerA.name} {a} against {playerB.name}")
+    reg.append(feed)
+    w = open('registry.json','w')
+    json.dump(reg, w)
+    w.close()
+    return   
+    
 
 def elo(Ra, Rb, S):  # Calculates new ELO rank
 
@@ -95,15 +140,16 @@ async def ping(ctx):  # Sends Current bot's ping
 
 @client.command()
 async def stats(ctx, member: discord.Member):  # Checks tagged user's stats
-    check(member.id)
+    #await role(member)
+    check(member)
     await ctx.send(embed=sendStats(member))
 
 
 @client.command()
 async def win(ctx, loser: discord.Member):  # Takes current message author's and tagged user's stats, checks them and calculates new ones and dumps in file
     print(f'{ctx.author} won against {loser}')
-    check(ctx.author.id)
-    check(loser.id)
+    check(ctx.author)
+    check(loser)
     winnerID = str(ctx.author.id)
     loserID = str(loser.id)
     Rw = 0.0
@@ -149,14 +195,15 @@ async def win(ctx, loser: discord.Member):  # Takes current message author's and
     #send new stats
     await ctx.send(embed=sendStats(ctx.author))
     await ctx.send(embed=sendStats(loser))
+    regStats('won', ctx.author, loser)
 
 
 @client.command()
 async def tie(ctx, playerB: discord.Member):    # Takes current message author's and tagged user's stats,hecks them and calculates new ones and dumps in file
 
     print(f'{ctx.author} tied with {playerB}')
-    check(ctx.author.id)
-    check(playerB.id)
+    check(ctx.author)
+    check(playerB)
     playerAid = str(ctx.author.id)
     playerBid = str(playerB.id)
     Rw = 0.0
@@ -203,6 +250,7 @@ async def tie(ctx, playerB: discord.Member):    # Takes current message author's
     #send new stats
     await ctx.send(embed=sendStats(ctx.author))
     await ctx.send(embed=sendStats(playerB))
+    regStats('tied', ctx.author, playerB)
 
 
 
