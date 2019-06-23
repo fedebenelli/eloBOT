@@ -4,22 +4,24 @@ import json
 import math
 from datetime import datetime
 import keep_alive
+import json_store_client
 #ELO Algorithm taken from https://blog.mackie.io/the-elo-algorithm
 
-client = commands.Bot(command_prefix=(','))  #Sets prefix
-
+bot = commands.Bot(command_prefix=(','))  #Sets prefix
+jsonClient = json_store_client.Client('')
 RutherID = 168437285908512768
 
 #Events:
 
 
-@client.event
+@bot.event
 async def on_ready():  # Prints when the bot is ready
     print('Bot is listo wacho')
 
 
 #Functions:
-@client.event
+"""
+@bot.event
 async def role(member):
 
     # Opens file, saves the data as a variable and closes it
@@ -38,7 +40,7 @@ async def role(member):
             role3 = discord.utils.get(member.guild.roles, name='3')
 
             await member.remove_roles(role2, role3)
-            print()
+            print()"""
 
 
 def check(member):  # Gets a discord id and checks if that id is already on the database, if not it will add it
@@ -56,41 +58,30 @@ def check(member):  # Gets a discord id and checks if that id is already on the 
     print(f'checked id: {playerid}')
 
     # Opens file, saves the data as a variable and closes it
-    feed = open('players.json', "r")
-    players = json.load(feed)
-    feed.close()
+    players = jsonClient.retrieve('stats')
 
     for i in players:  # Checks if the player id is in database, if it is it returns
         if playerid == i['id']:
             return True
 
-    with open('players.json',
-              'w') as w:  #If players is not in the database it adds him
-        initialstats["id"] = playerid
-        players.append(initialstats)
-        json.dump(players, w)
-        w.close()
+    #If players is not in the database it adds him
+    initialstats["id"] = playerid
+    players.append(initialstats)
+    jsonClient.store("stats", players)
 
 
 def regStats(a, playerA, playerB):
 
-    f = open('players.json', 'r')
-    feed = json.load(f)
-    f.close()
-
-    f = open('registry.json', 'r')
-    reg = json.load(f)
-    f.close()
+    players = jsonClient.retrieve('stats')
+    registry = jsonClient.retrieve('registry')    
 
     now = datetime.now()
     date = now.strftime("%d/%m/%Y %H:%M:%S")
 
-    reg.append(date)
-    reg.append(f"{playerA.name} {a} against {playerB.name}")
-    reg.append(feed)
-    w = open('registry.json', 'w')
-    json.dump(reg, w)
-    w.close()
+    registry.append(date)
+    registry.append(f"{playerA.name} {a} against {playerB.name}")
+    registry.append(players)
+    jsonClient.store('registry',registry)
     return
 
 
@@ -106,18 +97,15 @@ def sendStats(member):
 
     memberID = member.id
     memberNick = member.display_name
-    with open('players.json') as f:
-        players = json.load(f)
-
-        for i in players:
-            if str(memberID) == i['id']:
-
-                r = i['Rank']
-                w = i['Wins']
-                l = i['Loses']
-                t = i['Ties']
-                m = i['Total Matches']
-                i = i['id']
+    players = jsonClient.retrieve('stats')
+    for i in players:
+        if str(memberID) == i['id']:
+            r = i['Rank']
+            w = i['Wins']
+            l = i['Loses']
+            t = i['Ties']
+            m = i['Total Matches']
+            i = i['id']
 
     name = f'{memberNick}\'s Stats:'
     avatar = str(member.avatar_url)
@@ -129,11 +117,9 @@ def sendStats(member):
 
     return embed
 
-
-
 #Commands:
 
-@client.command()
+@bot.command()
 async def h(ctx):
     embed = discord.Embed(colour=discord.Colour.green())
 
@@ -141,26 +127,26 @@ async def h(ctx):
     name = 'eloBOT commands\'s:'
     embed.add_field(name=name, value=string, inline=True)
 
-    string = 'In the case the you want to veto a result where you\'ve been tagged use `,veto` and we\'ll contact with you.\nIf a user wants to veto a match, a screenshot of the match results from both players will be needed. If no evidence is provided from both parts, then the match never happened,  so make sure to always screenshot your ranked match results.'
+    string = 'In the case the you want to veto a result where you\'ve been tagged use `,veto` and we\'ll contact with you.\nIf an user wants to veto a match, the winner needs to provide a screenshot of the match\'s result. If no proof is given then the match never happened and the ranks will be restored to their last values, so make sure to always screenshot your ranked match results.'
     name = 'Veto rules:'
     embed.add_field(name=name, value=string, inline=True)
 
     await ctx.send(embed=embed)
 
 
-@client.command()
+@bot.command()
 async def ping(ctx):  # Sends Current bot's ping
-    await ctx.send(f'Pong! {round(client.latency*1000)}ms')
+    await ctx.send(f'Pong! {round(bot.latency*1000)}ms')
 
 
-@client.command()
+@bot.command()
 async def stats(ctx, member: discord.Member):  # Checks tagged user's stats
     #await role(member)
     check(member)
     await ctx.send(embed=sendStats(member))
 
 
-@client.command()
+@bot.command()
 async def win(ctx, loser: discord.Member):  # Takes current message author's and tagged user's stats, checks them and calculates new ones and dumps in file
 
     if loser == ctx.author:
@@ -173,9 +159,8 @@ async def win(ctx, loser: discord.Member):  # Takes current message author's and
     loserID = str(loser.id)
     Rw = 0.0
     Rl = 0.0
-    feed = open('players.json')
-    players = json.load(feed)
-    feed.close()
+    
+    players = jsonClient.retrieve('stats')
 
     #get the actual Ranks
     for i in players:
@@ -208,16 +193,14 @@ async def win(ctx, loser: discord.Member):  # Takes current message author's and
             i['Total Matches'] = str(aux + 1)
 
     #save new data
-    with open('players.json', 'w') as w:
-        json.dump(players, w)
-        w.close()
+    jsonClient.store('stats',players)
     #send new stats
     await ctx.send(embed=sendStats(ctx.author))
     await ctx.send(embed=sendStats(loser))
     regStats('won', ctx.author, loser)
 
 
-@client.command()
+@bot.command()
 async def tie(ctx, playerB: discord.Member):  # Takes current message author's and tagged user's stats,hecks them and calculates new ones and dumps in file
     if playerB == ctx.author:
         await ctx.send('Congratulations, you played yourself')
@@ -229,9 +212,7 @@ async def tie(ctx, playerB: discord.Member):  # Takes current message author's a
     playerBid = str(playerB.id)
     Rw = 0.0
     Rl = 0.0
-    feed = open('players.json')
-    players = json.load(feed)
-    feed.close()
+    players = jsonClient.retrieve('stats')
 
     #get the actual Ranks
     for i in players:
@@ -264,9 +245,7 @@ async def tie(ctx, playerB: discord.Member):  # Takes current message author's a
             i['Total Matches'] = str(aux + 1)
 
     #save new data
-    with open('players.json', 'w') as w:
-        json.dump(players, w)
-        w.close()
+    jsonClient.store('stats',players)
 
     #send new stats
     await ctx.send(embed=sendStats(ctx.author))
@@ -274,10 +253,10 @@ async def tie(ctx, playerB: discord.Member):  # Takes current message author's a
     regStats('tied', ctx.author, playerB)
 
 
-@client.command()
+@bot.command()
 async def veto(ctx):
 
-    man = client.get_user(RutherID)
+    man = bot.get_user(RutherID)
     name = ctx.author.name
     authorid = ctx.author.id
     now = datetime.now()
@@ -289,4 +268,4 @@ async def veto(ctx):
 
 
 keep_alive.keep_alive()
-client.run('')
+bot.run('')
