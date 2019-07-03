@@ -7,28 +7,38 @@ import keep_alive
 import json_store_client
 #ELO Algorithm taken from https://blog.mackie.io/the-elo-algorithm
 
-bot = commands.Bot(command_prefix=(','))  #Sets prefix
-jsonClient = json_store_client.Client('')
+
+#open config file
+with open("config.json") as f:
+        configFile = json.load(f)
+
+#definitions
+
+jsonToken = configFile['jsonToken']	
+botToken = configFile['botToken']
+jsonClient = json_store_client.Client(jsonToken)
+
+bot = commands.Bot(command_prefix=(','))
 RutherID = 168437285908512768
+
 
 #Events:
 
-
 @bot.event
 async def on_ready():  # Prints when the bot is ready
-    print('Bot is listo wacho')
+	print('Bot is listo wacho')
+	game = discord.Game("Use ,h for commands")
+	await bot.change_presence(status=discord.Status.idle, activity=game)
 
 
 #Functions:
-"""
+"""WIP
 @bot.event
 async def role(member):
-
     # Opens file, saves the data as a variable and closes it
     feed = open('players.json', "r")
     players = json.load(feed)
     feed.close()
-
     for i in players:
         if str(member.id) == i['id']:
             #if float(i['Rank']) < 500:
@@ -38,7 +48,6 @@ async def role(member):
             #role1 = discord.utils.get(member.guild.roles, name='1')
             role2 = discord.utils.get(member.guild.roles, name='2')
             role3 = discord.utils.get(member.guild.roles, name='3')
-
             await member.remove_roles(role2, role3)
             print()"""
 
@@ -70,19 +79,25 @@ def check(member):  # Gets a discord id and checks if that id is already on the 
     jsonClient.store("stats", players)
 
 
-def regStats(a, playerA, playerB):
+async def regStats(a, playerA, playerB):
 
-    players = jsonClient.retrieve('stats')
-    registry = jsonClient.retrieve('registry')    
+	#Gets actual stats, registry and date, then updates the registry
+	players = jsonClient.retrieve('stats')
+	registry = jsonClient.retrieve('registry')    
+	now = datetime.now()
+	date = now.strftime("%d/%m/%Y %H:%M:%S")
+	registry.append(date)
+	registry.append(f"{playerA.name} {a} against {playerB.name}")
+	registry.append(players)
+	
+	#Sends Ruther the new stats for backup
+	msj = f"{playerA.name} {a} against {playerB.name}"+str(players)
+	man = bot.get_user(RutherID)
+	await man.send(msj)
 
-    now = datetime.now()
-    date = now.strftime("%d/%m/%Y %H:%M:%S")
-
-    registry.append(date)
-    registry.append(f"{playerA.name} {a} against {playerB.name}")
-    registry.append(players)
-    jsonClient.store('registry',registry)
-    return
+	#Stores new registry
+	jsonClient.store('registry',registry)
+	return
 
 
 def elo(Ra, Rb, S):  # Calculates new ELO rank
@@ -197,7 +212,7 @@ async def win(ctx, loser: discord.Member):  # Takes current message author's and
     #send new stats
     await ctx.send(embed=sendStats(ctx.author))
     await ctx.send(embed=sendStats(loser))
-    regStats('won', ctx.author, loser)
+    await regStats('won', ctx.author, loser)
 
 
 @bot.command()
@@ -250,7 +265,7 @@ async def tie(ctx, playerB: discord.Member):  # Takes current message author's a
     #send new stats
     await ctx.send(embed=sendStats(ctx.author))
     await ctx.send(embed=sendStats(playerB))
-    regStats('tied', ctx.author, playerB)
+    await regStats('tied', ctx.author, playerB)
 
 
 @bot.command()
@@ -268,4 +283,4 @@ async def veto(ctx):
 
 
 keep_alive.keep_alive()
-bot.run('')
+bot.run(botToken)
