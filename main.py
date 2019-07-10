@@ -16,10 +16,10 @@ with open("config.json") as f:
 #definitions
 botToken = configFile['botToken']
 gistToken = configFile['gistToken']
-statsToken = configFile['statsToken']
+filesToken = configFile['filesToken']
 
 gistClient = Github(gistToken)
-gist = gistClient.get_gist(statsToken)
+gist = gistClient.get_gist(filesToken)
 
 bot = commands.Bot(command_prefix=(','))
 AdminID = <Server admin or bot manager role ID here>
