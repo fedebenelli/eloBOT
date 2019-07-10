@@ -43,7 +43,7 @@ def getFile(filename):
     return statsJson
 
 def updateFile(filename,jsonData):
-    gist.edit(description="eloBOT",files={filename: github.InputFileContent(content=json.dumps(jsonData))},) 
+    gist.edit(description="eloBOT",files={filename: github.InputFileContent(content=json.dumps(jsonData))},) #here "eloBOT" is the gist's name, can be changed for anything 
 
 def check(member):  # Gets a discord id and checks if that id is already on the database, if not it will add it. Gotta fix it to make it add depending on the game acronym 
     playerid = member.id
