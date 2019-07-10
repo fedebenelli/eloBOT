@@ -22,7 +22,7 @@ gistClient = Github(gistToken)
 gist = gistClient.get_gist(statsToken)
 
 bot = commands.Bot(command_prefix=(','))
-RutherID = 168437285908512768
+AdminID = <Server admin or bot manager role ID here>
 
 
 #Events:
@@ -319,7 +319,7 @@ async def tie(ctx, gameAcronym, playerB: discord.Member):  # Takes current messa
 @bot.command()
 async def veto(ctx):
 
-    man = bot.get_user(RutherID)
+    man = bot.get_user(AdminID)
     name = ctx.author.name
     authorid = ctx.author.id
     now = datetime.now()
