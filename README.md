@@ -1,5 +1,6 @@
 # eloBOT
-A bot that handles an ELO ranking system between players of a gaming Discord server.
+A bot that handles an ELO ranking system between players of a gaming Discord server. Info on how ELO works can be found here https://blog.mackie.io/the-elo-algorithm
+
 This is still a WIP. For the moment the bot is designed to use repl.it as a host server and uptime robot to keep it online. The stats of players are saved as a json file in a gist, but here is an example of how they're stored:
 
 {
