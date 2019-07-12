@@ -17,13 +17,12 @@ with open("config.json") as f:
 botToken = configFile['botToken']
 gistToken = configFile['gistToken']
 filesToken = configFile['filesToken']
+modID = configFile['modID']
 
 gistClient = Github(gistToken)
 gist = gistClient.get_gist(filesToken)
 
 bot = commands.Bot(command_prefix=(','))
-AdminID = <Server admin or bot manager role ID here>
-
 
 #Events:
 
@@ -319,7 +318,7 @@ async def tie(ctx, gameAcronym, playerB: discord.Member):  # Takes current messa
 @bot.command()
 async def veto(ctx):
 
-    man = bot.get_user(AdminID)
+    man = bot.get_user(modID)
     name = ctx.author.name
     authorid = ctx.author.id
     now = datetime.now()
