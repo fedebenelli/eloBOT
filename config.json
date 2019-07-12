@@ -1,5 +1,6 @@
 {
 	"botToken":"",
 	"gistToken":"",
-	"filesToken":""
+	"filesToken":"",
+	"modID":""
 }
