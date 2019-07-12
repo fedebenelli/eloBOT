@@ -36,7 +36,7 @@ async def on_ready():  # Prints when the bot is ready
 #Functions:
 
 def getFile(filename):
-    gist = gistClient.get_gist(statsToken)
+    gist = gistClient.get_gist(filesToken)
     stats = (gist.files[filename].content)
     statsJson = json.loads(stats)
     return statsJson
