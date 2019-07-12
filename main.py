@@ -95,9 +95,9 @@ async def regStats(a, gameAcronym, playerA, playerB):
 	
     registry.append(newInput)
 	
-	#Sends Ruther the new stats for backup
+	#Sends the mod the new stats for backup
     msj = f"{playerA.name} {a} against {playerB.name} at {gameAcronym}"+str(players)
-    man = bot.get_user(RutherID)
+    man = bot.get_user(modID)
     await man.send(msj)
 
 	#Stores new registry
