@@ -1,1 +1,30 @@
-{"stats": {"players": [{"id": "exampleID", "playerName": "exampleName", "games": [{"gameName": "Battlezone 98 Redux", "gameAcro": "bzr", "rank": "500", "W": "0", "T": "0", "L": "0", "TM": "0"}, {"gameName": "Battlezone: Combat Commander", "gameAcro": "bzcc", "rank": "500", "W": "0", "T": "0", "L": "0", "TM": "0"}]}, {"id": "168437285908512768", "playerName": "Ruther", "games": [{"gameName": "Battlezone 98 Redux", "gameAcro": "bzr", "rank": 392.40192895328, "W": "9", "T": "3", "L": "8", "TM": "20"}, {"gameName": "Battlezone: Combat Commander", "gameAcro": "bzcc", "rank": 436.4938471819753, "W": "3", "T": "3", "L": "5", "TM": "11"}]}, {"id": "585611327431639066", "playerName": "Tester", "games": [{"gameName": "Battlezone 98 Redux", "gameAcro": "bzr", "rank": 390.0048457062622, "W": "8", "T": "3", "L": "9", "TM": "20"}, {"gameName": "Battlezone: Combat Commander", "gameAcro": "bzcc", "rank": 454.51050271673785, "W": "5", "T": "3", "L": "3", "TM": "11"}]}]}}
+{
+  "stats": {
+    "players": [
+      {
+        "id": "exampleID",
+        "playerName": "exampleName",
+        "games": [
+          {
+            "gameName": "Battlezone 98 Redux",
+            "gameAcro": "bzr",
+            "rank": "500",
+            "W": "0",
+            "T": "0",
+            "L": "0",
+            "TM": "0"
+          },
+          {
+            "gameName": "Battlezone: Combat Commander",
+            "gameAcro": "bzcc",
+            "rank": "500",
+            "W": "0",
+            "T": "0",
+            "L": "0",
+            "TM": "0"
+          }
+        ]
+      }
+    ]
+  }
+}
