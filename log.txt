@@ -1,0 +1,2 @@
+<_io.TextIOWrapper name='log.txt' mode='r' encoding='cp1252'>
+[{'id': 585611327431639066, 'name': 'Tester'}] tie against [{'id': 168437285908512768, 'name': 'Ruther'}] at bzcc

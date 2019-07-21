@@ -111,3 +111,5 @@ config.json
 config2.json
 scriptTester.py
 .vscode/launch.json
+registry.json
+stats.json

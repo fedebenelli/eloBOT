@@ -5,8 +5,14 @@ import math
 from datetime import datetime
 import github
 from github import Github
+import logging
 #ELO Algorithm taken from https://blog.mackie.io/the-elo-algorithm
 
+logger = logging.getLogger('discord')
+logger.setLevel(logging.DEBUG)
+handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
+handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
+logger.addHandler(handler)
 
 # Open config file
 with open("config.json") as f:
@@ -262,7 +268,7 @@ def sendStats(member, gameAcronym):
     memberID = member.id
     memberNick = member.display_name
     statsJson = getFile('stats.json')
-
+    gameName = ''
     if gameAcronym != "all":
         for i in statsJson['stats']['players']:
             if str(memberID) == i['id']:
@@ -357,10 +363,11 @@ async def ranked(ctx, cond, gameAcronym):  # Takes current message author's and 
     deltaB = 0
     teamA = ""
     teamB = ""
+
     # Gets the actual stats from the file
     stats = getFile('stats.json')
     players = stats['stats']['players']
-    
+
     if cond == "win":
         SA = 1
         SB = 0
@@ -375,7 +382,7 @@ async def ranked(ctx, cond, gameAcronym):  # Takes current message author's and 
         strB = "T"
         teamA = "Team 1"
         teamB = "Team 2"
-    
+
     # Gets the member's input of players and saves them as a variable (list)
     await ctx.send(f"Input the {teamA}:")
     msj = await bot.wait_for('message')
@@ -384,47 +391,49 @@ async def ranked(ctx, cond, gameAcronym):  # Takes current message author's and 
     await ctx.send(f"Input the {teamB}:")
     msj = await bot.wait_for('message')
     membersB = getMembers(msj.content)
-    
+
     # Checks if there ain't any repeated players on both teams
     """
     if ctx.author in membersB:
-    
+
     for member in membersA:
         if member in membersB:
             await ctx.send('One player can\'t be on both teams, try again >:(')
             return"""
 
-    #print(f'{ctx.author} won against {playerB}')
-    
-    for member in membersA:
-        check(member)
-    for member in membersB:
-        check(member)
+    async with ctx.typing():
+        for member in membersA:
+            check(member)
+        for member in membersB:
+            check(member)
+        print(len(membersA))
+        print(len(membersB))
+        # Calculates Avg Rank of each team
+        teamArank = getAvgRank(membersA,gameAcronym,players) * len(membersA)/len(membersB)
+        teamBrank = getAvgRank(membersB,gameAcronym,players) * len(membersB)/len(membersA)
 
-    # Calculates Avg Rank of each team
-    teamArank = getAvgRank(membersA,gameAcronym,players) * len(membersA)/len(membersB)
-    teamBrank = getAvgRank(membersB,gameAcronym,players) * len(membersB)/len(membersA)
-
-    # Calculates the new variation of rank (delta) based on actual stats and updates
-    for memberA in membersA:
-        for memberB in membersB:
-            deltaA = deltaelo(memberA, teamBrank, gameAcronym, SA, players)
-            changeelo(memberA, deltaA, gameAcronym, strA, players)
-
-    for memberB in membersB:
+        # Calculates the new variation of rank (delta) based on actual stats and updates
         for memberA in membersA:
-            deltaB = deltaelo(memberB, teamArank, gameAcronym, SB, players)
-            changeelo(memberB, deltaB, gameAcronym, strB, players)
-    
-    #send new stats        
-    await ctx.send(f"{teamA}:")
-    for memberA in membersA:
-        await ctx.send(embed=sendStats(memberA, gameAcronym))
-    await ctx.send(f"{teamB}:")
-    for memberB in membersB:
-        await ctx.send(embed=sendStats(memberB, gameAcronym))
+            for memberB in membersB:
+                deltaA = deltaelo(memberA, teamBrank, gameAcronym, SA, players)
+                changeelo(memberA, deltaA, gameAcronym, strA, players)
 
-    await regStats(cond, gameAcronym, membersA, membersB)
+        for memberB in membersB:
+            for memberA in membersA:
+                deltaB = deltaelo(memberB, teamArank, gameAcronym, SB, players)
+                changeelo(memberB, deltaB, gameAcronym, strB, players)
+        await regStats(cond, gameAcronym, membersA, membersB)
+
+        # Send new stats        
+        await ctx.send(f"{teamA}:")
+        for memberA in membersA:
+            await ctx.send(embed=sendStats(memberA, gameAcronym))
+        await ctx.send(f"{teamB}:")
+        for memberB in membersB:
+            await ctx.send(embed=sendStats(memberB, gameAcronym))
+    print('Ranked!')
+
+    
 
 @bot.command()
 async def veto(ctx):
