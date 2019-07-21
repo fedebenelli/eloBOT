@@ -1,0 +1,34 @@
+[
+  {
+    "date": "exampleDate",
+    "detail": "detailExample",
+    "stats": {
+      "players": [
+        {
+          "id": "exampleID",
+          "playerName": "exampleName",
+          "games": [
+            {
+              "gameName": "Battlezone 98 Redux",
+              "gameAcro": "bzr",
+              "rank": "500",
+              "W": "0",
+              "T": "0",
+              "L": "0",
+              "TM": "0"
+            },
+            {
+              "gameName": "Battlezone: Combat Commander",
+              "gameAcro": "bzcc",
+              "rank": "500",
+              "W": "0",
+              "L": "0",
+              "T": "0",
+              "TM": "0"
+            }
+          ]
+        }
+      ]
+    }
+  }
+]

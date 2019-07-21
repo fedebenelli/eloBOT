@@ -3,26 +3,26 @@ from discord.ext import commands
 import json
 import math
 from datetime import datetime
-import keep_alive
 import github
 from github import Github
 #ELO Algorithm taken from https://blog.mackie.io/the-elo-algorithm
 
 
-#open config file
+# Open config file
 with open("config.json") as f:
         configFile = json.load(f)
 
-#definitions
+# Definitions
 botToken = configFile['botToken']
-gistToken = configFile['gistToken']
 filesToken = configFile['filesToken']
-modID = configFile['modID']
+modID = int(configFile['modID'])
 
-gistClient = Github(gistToken)
-gist = gistClient.get_gist(filesToken)
+#In the case the bot files are hosted in a gist, functions getFile() and updateFile() also have the equivalent code for gists
+"gistToken = configFile['gistToken']"
+"gistClient = Github(gistToken)"
+"gist = gistClient.get_gist(filesToken)"
 
-bot = commands.Bot(command_prefix=(','))
+bot = commands.Bot(command_prefix=(','), case_insensitive=True)
 
 #Events:
 
@@ -35,30 +35,108 @@ async def on_ready():  # Prints when the bot is ready
 
 #Functions:
 
-def getFile(filename):
-    gist = gistClient.get_gist(filesToken)
-    stats = (gist.files[filename].content)
-    statsJson = json.loads(stats)
-    return statsJson
+def getFile(filename):    
 
-def updateFile(filename,jsonData):
-    gist.edit(description="eloBOT",files={filename: github.InputFileContent(content=json.dumps(jsonData))},) #here "eloBOT" is the gist's name, can be changed for anything 
+    #Just a simpler way to open the files
+    """gist = gistClient.get_gist(filesToken)
+    f = (gist.files[filename].content)
+    fJson = json.loads(f)"""
+    
+    filetype = ''
+    boolean = False
+    for i in filename:
+        if i == '.':
+            boolean = True
+        if boolean:
+            filetype += i
 
-def check(member):  # Gets a discord id and checks if that id is already on the database, if not it will add it. Gotta fix it to make it add depending on the game acronym 
+    with open(filename, 'r') as feed:
+        f = feed
+        if filetype == '.json':
+            f = json.load(feed)
+    return f
+
+def updateFile(filename, data):
+    #Just a simpler way to write on the files
+    """gist.edit(description=gist.description,files={filename: github.InputFileContent(content=json.dumps(jsonData))},) #here "eloBOT" is the gist's name, can be changed for anything"""
+    filetype = ''
+    boolean = False
+    for i in filename:
+        if i == '.':
+            boolean = True
+        if boolean:
+            filetype += i
+
+    with open(filename, "w") as w:
+        if filetype == '.json':
+            json.dump(data,w)
+        if filetype == '.txt':
+            w.write(data)
+
+def getAvgRank(members, gameAcronym, players):  # Gets the members of a team, the game acronym and the stats data, then it calculates the average rank of that team
+    
+    gameAcronym = gameAcronym.lower()
+    rankList = []
+
+    #Make the list of ranks
+    for member in members:
+        for i in players:
+            if i['id'] == str(member.id):
+                for game in i['games']:
+                    if game['gameAcro'] == gameAcronym:
+                        rankList.append(game['rank'])
+    
+    mean = 0
+    count = 0
+    
+    #Calculates the average/mean rank
+    for i in rankList:
+        mean+=float(i)
+        count+=1
+    mean = mean/count
+    return mean
+
+def getMembers(str): # Makes a list of discord.Member's that are tagged in a message, message it's stored as string and tagged members are received as <@id>
+    
+    boolean = False
+    members = []
+    aux = ""
+    for i in str:
+        if i == ">":
+            boolean = False
+            members.append(int(aux))
+            aux = ""
+        if boolean:
+            aux += i    
+        if i == "@":
+            boolean = True
+    i = 0
+    for member in members:
+        members[i] = bot.get_user(member)
+        i+=1
+    return members
+
+def check(member):  # Gets a discord id and checks if that id is already on the database, if not it will add it. Gotta add to make it add depending on the game acronym 
     playerid = member.id
+
+    #Creates a string with the json format used, with default stats and blank id and playerName
     initialStats = json.loads('''
-    {"id":"",
-    "playerName":"",
-    "games":[
-        {"gameName":"Battlezone 98 Redux","gameAcro":"bzr","rank":"500","W":"0","T":"0","TM":"0"},
-        {"gameName":"Battlezone: Combat Commander","gameAcro":"bzcc","rank":"500","W":"0","T":"0","TM":"0"}]}''')
+    {
+        "id":"",
+        "playerName":"",
+        "games":
+        [
+            {"gameName":"Battlezone 98 Redux","gameAcro":"bzr","rank":"500","W":"0","T":"0","L":"0","TM":"0"},
+            {"gameName":"Battlezone: Combat Commander","gameAcro":"bzcc","rank":"500","W":"0","T":"0","L":"0","TM":"0"}
+        ]
+    }''')
 
     playerid = str(playerid)
     print(f'checked id: {playerid} from user: {member.name}' )
     
-    # Opens file, saves the data as a variable
+    # Opens stats file, saves the data as a variable
     statsJson = getFile('stats.json')
-    for i in statsJson['stats']['players']:  # Checks if the player id is in database, if it is it returns
+    for i in statsJson['stats']['players']:  # Checks if the player id is in database, if it is then it returns
         if playerid == i['id']:
             return True
 
@@ -68,51 +146,119 @@ def check(member):  # Gets a discord id and checks if that id is already on the 
     statsJson['stats']['players'].append(initialStats)
     updateFile('stats.json',statsJson)
 
-async def regStats(a, gameAcronym, playerA, playerB):
+async def regStats(a, gameAcronym, membersA, membersB): # Gets the match result (win/tie), and appends the new stats file with the date and detail to the registry.json file
 
-	#Gets actual stats, registry and date, then updates the registry
-
+    gameAcronym = gameAcronym.lower()
     data = getFile('stats.json')
     players = data['stats']
     registry = getFile('registry.json')
+    log = str(getFile('log.txt'))
 
     now = datetime.now()
     date = now.strftime("%d/%m/%Y %H:%M:%S")
 
     newInput = json.loads('''
-    {"date":"exampleDate",
-    "detail":"detailExample",
-    "stats":{
-        "players":[
-            {"id":"exampleID","playerName":"exampleName",
-            "games":[
-                {"gameName":"Battlezone 98 Redux","gameAcro":"bzr","rank":"500","W":"0","T":"0","TM":"0"},
-                {"gameName":"Battlezone: Combat Commander","gameAcro":"bzcc","rank":"500","W":"0","T":"0","TM":"0"}]}]}}''')
+    {
+        "date":"exampleDate",
+        "detail":"detailExample",
+        "stats":
+        {
+            "players":
+            [
+                {
+                    "id":"exampleID",
+                    "playerName":"exampleName",
+                    "games":
+                    [
+                        {"gameName":"Battlezone 98 Redux","gameAcro":"bzr","rank":"500","W":"0","T":"0","L":"0","TM":"0"},
+                        {"gameName":"Battlezone: Combat Commander","gameAcro":"bzcc","rank":"500","W":"0","T":"0","L":"0","TM":"0"}
+                    ]
+                }
+            ]
+        }
+    }''')
+
+    playerAAux = '''{"id":"","name":""}'''
+    playerAAux = json.loads(playerAAux)
 	
+    playersA = '''[]'''
+    playersA = json.loads(playersA)
+    for playerA in membersA:
+        playerAAux['id'] = playerA.id
+        playerAAux['name'] = playerA.name
+        playersA.append(playerAAux)
+    
+    playerBAux = '''{"id":"","name":""}'''
+    playerBAux = json.loads(playerBAux)
+
+    playersB = '''[]'''
+    playersB = json.loads(playersB)
+    for playerB in membersB:
+        playerBAux['id'] = playerB.id
+        playerBAux['name'] = playerB.name
+        playersB.append(playerBAux)
+    
+    
     newInput['date'] = date
-    newInput['detail'] = f"{playerA.name} {a} against {playerB.name} at {gameAcronym}"
+    newInput['detail'] = f"{playersA} {a} against {playersB} at {gameAcronym}"
     newInput['stats'] = players
-	
+
     registry.append(newInput)
 	
 	#Sends the mod the new stats for backup
-    msj = f"{playerA.name} {a} against {playerB.name} at {gameAcronym}"+str(players)
+    msj = "\nNew Reg!:" + "\n\n" + f"{json.dumps(playersA)} {a} against {json.dumps(playersB)} at {gameAcronym}" + "\n\nStats:\n" + json.dumps(players)
     man = bot.get_user(modID)
     await man.send(msj)
-
+    print(log)
+    log += f"\n{playersA} {a} against {playersB} at {gameAcronym}"
+    print(log)
 	#Stores new registry
     updateFile('registry.json', registry)
+    updateFile('log.txt',log)
+
     return
 
-def elo(Ra, Rb, S):  # Calculates new ELO rank
+def deltaelo(memberA, teamBrank, gameAcronym,S, players):  # Calculates delta on ELO rank
+    gameAcronym = gameAcronym.lower()
+    RA = 0.
 
+    # Get the actual rank of memberA
+    for i in players:   
+        if str(memberA.id) == i['id']:
+            for game in i['games']:
+                if game['gameAcro'] == gameAcronym:
+                    RA = float(game['rank'])
+
+    #Calculation of delta elo
     k = 100.
     n = 100.
-    nR = Ra + k * (S - 1 / (1 + math.pow(10.0, -(Ra - Rb) / n)))
-    return nR
+    deltaRank = k * (S - 1 / (1 + math.pow(10.0, -(RA - teamBrank) / n)))
+    return deltaRank
 
-def sendStats(member, gameAcronym):
+def changeelo(memberA, deltaRank, gameAcronym, cond, players):
     
+    gameAcronym = gameAcronym.lower()
+    #change Ranks    
+    for i in players:
+        if str(memberA.id) == i['id']:
+            for game in i['games']:
+                if game['gameAcro'] == gameAcronym:
+                    newRank = float(game['rank']) + deltaRank
+                    game['rank'] = newRank
+                    aux = int(game[cond])
+                    game[cond] = str(aux + 1)
+                    aux = int(game['TM'])
+                    game['TM'] = str(aux + 1)
+
+    stats = getFile('stats.json')
+    stats['stats']['players'] = players
+    
+    #save new data    
+    updateFile('stats.json', stats)
+    
+def sendStats(member, gameAcronym):
+
+    gameAcronym = gameAcronym.lower()
     memberID = member.id
     memberNick = member.display_name
     statsJson = getFile('stats.json')
@@ -158,17 +304,23 @@ def sendStats(member, gameAcronym):
     return embed
 
 
+
+
 #Commands:
 
 @bot.command()
 async def h(ctx):
 
     embed = discord.Embed(colour=discord.Colour.green())
-    string = '''`,ping`: Returns bot\'s ping.
-        `,stats gamename @player`: Gives tagged player elo stats.
-        `,win gamename @player`: Assigns new elo ranks based on that message\'s author is the match winner and tagged user the match playerB.
-        `,tie gamename @player`: Assigns new elo ranks based to both players.
-        `,veto`: Sends a veto request to the bot\'s managers.\n\n'''
+    string = '''
+
+        `,ping`: Returns bot\'s ping.
+        `,stats <gamename> @player`: Gives tagged player elo stats.
+        `,ranked <gamecondition> <gamename>`: Will ask for another message, where the user tags all the players of team 1 and then all the players of team 2.
+        gamecondition can be "win" or "tie".
+        `,veto`: Sends a veto request to the bot\'s managers.
+        
+        \n\n'''
     name = 'eloBOT commands\'s:'
     embed.add_field(name=name, value=string, inline=False)    
     string = '''    
@@ -188,132 +340,91 @@ async def ping(ctx):  # Sends Current bot's ping
 @bot.command()
 async def stats(ctx, gameAcronym, member: discord.Member):  # Checks tagged user's stats
     #await role(member)
+    gameAcronym = gameAcronym.lower()
     check(member)
     await ctx.send(embed=sendStats(member,gameAcronym))
 
 @bot.command()
-async def win(ctx, gameAcronym, playerB: discord.Member):  # Takes current message author's and tagged user's stats, checks them and calculates new ones and dumps in file
-
-    if playerB == ctx.author:
-        await ctx.send('Congratulations, you played yourself')
-        return
-    print(f'{ctx.author} won against {playerB}')
-    check(ctx.author)
-    check(playerB)
-
-    playerAid = str(ctx.author.id)
-    playerBid = str(playerB.id)
-    Rw = 0.0
-    Rl = 0.0
+async def ranked(ctx, cond, gameAcronym):  # Takes current message author's and tagged user's stats, checks them and calculates new ones and dumps in file
     
+    #  Defines variables for later
+    gameAcronym = gameAcronym.lower()
+    SA = 0.5
+    SB = 0.5
+    strA = ""
+    strB = ""
+    deltaA = 0
+    deltaB = 0
+    teamA = ""
+    teamB = ""
+    # Gets the actual stats from the file
     stats = getFile('stats.json')
     players = stats['stats']['players']
-
-    #get the actual Ranks
-    for i in players:
-        if playerAid == i['id']:
-            for game in i['games']:
-                if game['gameAcro'] == gameAcronym:
-                    Rw = float(game['rank'])
-        if playerBid == i['id']:
-            for game in i['games']:
-                if game['gameAcro'] == gameAcronym:
-                    Rl = float(game['rank'])
-
-    #new Ranks calculation
-    Rwaux = elo(Rw, Rl, 1)
-    Rlaux = elo(Rl, Rw, 0)
-    Rw = Rwaux
-    Rl = Rlaux
-
-    #change Ranks
-    for i in players:
-        if playerAid == i['id']:
-            for game in i['games']:
-                if game['gameAcro'] == gameAcronym:
-                    game['rank'] = Rw
-                    aux = int(game['W'])
-                    game['W'] = str(aux + 1)
-                    aux = int(game['TM'])
-                    game['TM'] = str(aux + 1)
-
-        if playerBid == i['id']:
-            for game in i['games']:
-                if game['gameAcro'] == gameAcronym:
-                    game['rank'] = Rl
-                    aux = int(game['TM'])
-                    game['TM'] = str(aux + 1)
-
-    stats['stats']['players'] = players
-    #save new data
-    updateFile('stats.json', stats)
-    #send new stats
-    await ctx.send(embed=sendStats(ctx.author, gameAcronym))
-    await ctx.send(embed=sendStats(playerB, gameAcronym))
-    await regStats('won', gameAcronym, ctx.author, playerB)
-
-@bot.command()
-async def tie(ctx, gameAcronym, playerB: discord.Member):  # Takes current message author's and tagged user's stats,hecks them and calculates new ones and dumps in file
-
-    if playerB == ctx.author:
-        await ctx.send('Congratulations, you played yourself')
-        return
-    print(f'{ctx.author} won against {playerB}')
-    check(ctx.author)
-    check(playerB)
-
-    playerAid = str(ctx.author.id)
-    playerBid = str(playerB.id)
-    RA = 0.0
-    RB = 0.0
     
-    stats = getFile('stats.json')
-    players = stats['stats']['players']
+    if cond == "win":
+        SA = 1
+        SB = 0
+        strA = "W"
+        strB = "L"
+        teamA = "Winners"
+        teamB = "Losers"
+    if cond == "tie":
+        SA = 0.5
+        SB = 0.5
+        strA = "T"
+        strB = "T"
+        teamA = "Team 1"
+        teamB = "Team 2"
+    
+    # Gets the member's input of players and saves them as a variable (list)
+    await ctx.send(f"Input the {teamA}:")
+    msj = await bot.wait_for('message')
+    membersA = getMembers(msj.content)
 
-    #get the actual Ranks
-    for i in players:
-        if playerAid == i['id']:
-            for game in i['games']:
-                if game['gameAcro'] == gameAcronym:
-                    RA = float(game['rank'])
-        if playerBid == i['id']:
-            for game in i['games']:
-                if game['gameAcro'] == gameAcronym:
-                    RB = float(game['rank'])
+    await ctx.send(f"Input the {teamB}:")
+    msj = await bot.wait_for('message')
+    membersB = getMembers(msj.content)
+    
+    # Checks if there ain't any repeated players on both teams
+    """
+    if ctx.author in membersB:
+    
+    for member in membersA:
+        if member in membersB:
+            await ctx.send('One player can\'t be on both teams, try again >:(')
+            return"""
 
-    #new Ranks calculation
-    RAaux = elo(RA, RB, 0.5)
-    RBaux = elo(RB, RA, 0.5)
-    RA = RAaux
-    RB = RBaux
+    #print(f'{ctx.author} won against {playerB}')
+    
+    for member in membersA:
+        check(member)
+    for member in membersB:
+        check(member)
 
-    #change Ranks
-    for i in players:
-        if playerAid == i['id']:
-            for game in i['games']:
-                if game['gameAcro'] == gameAcronym:
-                    game['rank'] = RA
-                    aux = int(game['T'])
-                    game['T'] = str(aux + 1)
-                    aux = int(game['TM'])
-                    game['TM'] = str(aux + 1)
+    # Calculates Avg Rank of each team
+    teamArank = getAvgRank(membersA,gameAcronym,players) * len(membersA)/len(membersB)
+    teamBrank = getAvgRank(membersB,gameAcronym,players) * len(membersB)/len(membersA)
 
-        if playerBid == i['id']:
-            for game in i['games']:
-                if game['gameAcro'] == gameAcronym:
-                    game['rank'] = RB
-                    aux = int(game['T'])
-                    game['T'] = str(aux + 1)
-                    aux = int(game['TM'])
-                    game['TM'] = str(aux + 1)
+    # Calculates the new variation of rank (delta) based on actual stats and updates
+    for memberA in membersA:
+        for memberB in membersB:
+            deltaA = deltaelo(memberA, teamBrank, gameAcronym, SA, players)
+            changeelo(memberA, deltaA, gameAcronym, strA, players)
 
-    stats['stats']['players'] = players
-    #save new data
-    updateFile('stats.json', stats)
-    #send new stats
-    await ctx.send(embed=sendStats(ctx.author, gameAcronym))
-    await ctx.send(embed=sendStats(playerB, gameAcronym))
-    await regStats('tied', gameAcronym, ctx.author, playerB)
+    for memberB in membersB:
+        for memberA in membersA:
+            deltaB = deltaelo(memberB, teamArank, gameAcronym, SB, players)
+            changeelo(memberB, deltaB, gameAcronym, strB, players)
+    
+    #send new stats        
+    await ctx.send(f"{teamA}:")
+    for memberA in membersA:
+        await ctx.send(embed=sendStats(memberA, gameAcronym))
+    await ctx.send(f"{teamB}:")
+    for memberB in membersB:
+        await ctx.send(embed=sendStats(memberB, gameAcronym))
+
+    await regStats(cond, gameAcronym, membersA, membersB)
 
 @bot.command()
 async def veto(ctx):
@@ -327,6 +438,10 @@ async def veto(ctx):
     await man.send(msj)
     await ctx.send('Your veto request hast been sent.')
 
-
-#keep_alive.keep_alive()
+""" WIP
+@bot.command()
+@commands.has_permissions(administrator=True) 
+async def mod(ctx, member: discord.Member):
+    """
+    
 bot.run(botToken)
