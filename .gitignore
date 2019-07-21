@@ -108,3 +108,6 @@ venv.bak/
 config.json
 dataDestroyer.py
 config.json
+config2.json
+scriptTester.py
+.vscode/launch.json
