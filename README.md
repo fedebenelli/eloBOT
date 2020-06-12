@@ -9,7 +9,7 @@ In the config.json file 3 parameters must be defined:
 -filesToken: The gist's share code
 
 The stats of players are saved as a json file in a gist, but here is an example of how they're stored:
-
+```json
 {
   "stats": {
     "players": [
@@ -38,5 +38,6 @@ The stats of players are saved as a json file in a gist, but here is an example 
     ]
   }
 }
+```
 
 A way to the Discord's server staff to add new games to the list is still in process
